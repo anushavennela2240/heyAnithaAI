@@ -41,3 +41,18 @@ html {
 pre:has(div.codeblock) {
   padding: 0;
 }
+.left-50{
+  left: 50%;
+}
+
+.bg-primary-600 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(37 99 235 / var(--tw-bg-opacity));
+}
+
+.w-48 {
+  width: 12rem;
+}
+.right-5{
+  right: 2rem;
+}

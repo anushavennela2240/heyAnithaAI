@@ -108,6 +108,7 @@ const Home: React.FC<HomeProps> = ({
     message: Message,
     deleteCount = 0,
     plugin: Plugin | null = null,
+    botLink?: any
   ) => {
     if (selectedConversation) {
       let updatedConversation: Conversation;
@@ -141,7 +142,7 @@ const Home: React.FC<HomeProps> = ({
       };
 
       const formData = new FormData();
-      const endpoint = getEndpoint(plugin);
+      const endpoint = getEndpoint(plugin,botLink);
       let body;
 
       if (!plugin) {

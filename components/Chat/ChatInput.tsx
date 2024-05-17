@@ -25,6 +25,10 @@ import { PluginSelect } from './PluginSelect';
 import { PromptList } from './PromptList';
 import { VariableModal } from './VariableModal';
 import { IconMicrophone } from '@tabler/icons-react';
+import { OptionsModal } from './OptionsModal';
+import { QueryModal } from './QueryModal';
+import { JiraModal } from './JiraModal';
+import { json } from 'stream/consumers';
 
 declare global {
   interface Window {
@@ -38,7 +42,7 @@ interface Props {
   model: OpenAIModel;
   conversationIsEmpty: boolean;
   prompts: Prompt[];
-  onSend: (message: Message, plugin: Plugin | null,link: string | null,option: string | null) => void;
+  onSend: (message: Message, plugin: Plugin | null, link: string | null, option: string | null) => void;
   onRegenerate: () => void;
   stopConversationRef: MutableRefObject<boolean>;
   textareaRef: MutableRefObject<HTMLTextAreaElement | null>;
@@ -66,18 +70,36 @@ export const ChatInput: FC<Props> = ({
   const [showPluginSelect, setShowPluginSelect] = useState(false);
   const [plugin, setPlugin] = useState<any | null>(null);
   const [jiraIntegration, setJiraIntegration] = useState(false);
-  const [showOptionsModal,setShowOptionsModal] = useState<any>(null);
+  const [showOptionsModal, setShowOptionsModal] = useState<any>(null);
   const [showQueryModal, setShowQueryModal] = useState<any | null>(null);
   const [options, setOptions] = useState<any | null>(null);
   const [recognizing, setRecognizing] = useState(false);
   const [recognition, setRecognition] = useState<any>({});
+  const [selectedPrompt, setSelectedPrompt] = useState<any>("")
 
   const promptListRef = useRef<HTMLUListElement | null>(null);
 
-  const filteredPrompts = prompts.flatMap((prompt:any) =>
-    prompt.items.filter((item:any) =>
-      item.name.toLowerCase().includes(promptInputValue.toLowerCase())
-    )
+  const promptsData = [{ id: 1, name: 'Scrum Master', link: 'scrum', method: 'GET', text: 'I am a Chatgeniusplus AI Senior Professional Scrum Master Expert and will provide the answer for:', selected: false, icon: 'admin_panel_settings' },
+  { id: 2, name: 'SRS Creation', link: 'srs', method: 'POST', text: 'I am a Chatgeniusplus AI Senior Professional Product Manager, and I will provide the answers for the following aspects of SRS documentation: Introduction to the purpose and context; Overall high-level description of the software application and its intended functionality; Specific requirements, including functional and non-functional ones; Interface requirements, including interactions with external systems or devices; Performance requirements, such as response times and processing rates; Design constraints that must be considered; User documentation to be delivered with the software application; Acceptance tests to verify the software meets the requirements for:', selected: false, icon: 'settings_applications' },
+  { id: 3, name: 'Epic', link: 'epic', method: 'GET', text: 'I am a Chatgeniusplus AI Senior Technical Scrum Master, and I will analyze the major features and functionalities specified and will  create a series of Epics for :', selected: false, icon: 'insert_chart' },
+  { id: 4, name: 'User stories/Acceptance creteria', link: 'epic', method: 'GET', text: 'I am a Chatgeniusplus AI, acting as a Sr. Technical Scrum master, and I will generate multiple User stories with positive and negative acceptance criteria for each User story based on :', selected: false, icon: 'insert_chart' },
+  { id: 5, name: 'Tasks', link: 'epic', method: 'GET', text: 'I am a Chatgeniusplus AI  ,acting as a Sr. Software Scrum Master, and generate multiple tasks based on the following :', selected: false, icon: 'insert_chart' },
+  { id: 16, name: 'Jira Integration', link: 'integration', method: 'POST', text: 'I am a Chatgeniusplus AI, generate multiple tasks based on the following :', selected: false, icon: 'insert_chart' },
+  { id: 6, name: 'Test Plan', link: 'epic', method: 'GET', text: "I am a Chatgeniusplus AI Senior Software Test Engineer Architect, and I will provide answers for the following aspects of test plan documentation: Overview, including a summary of the application's purpose and scope; Testing Summary, focusing on the scope of testing; Analysis of Scope and Test Focus Areas, including release content, regression, and platform testing; Progression Test Objectives; Various Other Testing activities like Security, Stress & Volume, Connectivity, Disaster Recovery/Back Up, Unit, and Integration Testing; Comprehensive Test Strategy, including test level responsibility, test type & approach, build strategy, test execution schedule, facility, data, resource provision plan, testing tools, handover procedure, and metrics; Test Environment Plan, including management, details, establishment, control, roles, and responsibilities; Assumptions and Dependencies for the testing process; Entry and Exit Criteria; Administrative Plan, including approvals, test milestones and schedule, training, and defect management; Definitions of key terms and concepts; References used for the testing process; Points of Contact for the testing process for :", selected: false, icon: 'insert_chart' },
+  { id: 7, name: 'Test scenarios', link: 'epic', method: 'GET', text: "I am chatgeniusplus AI ,acting as a Sr. Software Test Engineer Expert, I will be suggesting you the best 20 edge cases test scenarios for :", selected: false, icon: 'insert_chart' },
+  { id: 8, name: 'Test data', link: 'epic', method: 'GET', text: "I am chatgeniusplus AI ,acting as a Sr. Software Test Engineer Expert, I will be suggesting you the best 50 testing dummy data for :", selected: false, icon: 'insert_chart' },
+  { id: 9, name: 'Manual Test Case', link: 'epic', method: 'GET', text: "I am chatgeniusplus AI ,acting as a Sr. Software Test Engineer Expert and create a detailed test case. Include the unique ID, description, pre-steps, test steps, preconditions, test data, expected results, actual results, user acceptance criteria, and any additional comments or considerations for :", selected: false, icon: 'insert_chart' },
+  { id: 10, name: 'Automation Code', link: 'epic', method: 'GET', text: "I am chatgeniusplus AI ,acting as a Senior Automation Software Test Engineer and generating automation code for :", selected: false, icon: 'insert_chart' },
+  { id: 11, name: 'Deployment', link: 'epic', method: 'GET', text: "I am a Chatgeniusplus AI, acting as a  Senior Professional Product Manager, and I will provide the answers for the following aspects of deployment documentation: Introduction to the deployment plan, including its purpose and context; Description of the deployment strategy and the required steps to deploy the software to production; Outline of post-deployment activities, such as testing, monitoring, or maintenance; Description of resources required, including personnel, equipment, and materials; Identification and mitigation of deployment risks; Explanation of the approval process, including stakeholder sign-offs; Conclusion, summarizing key points and next steps for :", selected: false, icon: 'insert_chart' },
+  { id: 12, name: 'Academic', link: 'epic', method: 'GET', text: "I am a Chatgeniusplus AI, acting as an AI academic advisor, capable of helping students in selecting appropriate courses, setting goals with a timeframe, and monitoring their academic progress. Provide detailed advice with specific steps for each grade level and a timeline for :", selected: false, icon: 'insert_chart' },
+  { id: 13, name: 'Tutor', link: 'epic', method: 'GET', text: "I am Chatgeniusplus AI, acting as a AI-driven Tutor Genius, responsible for creating personalized study plans and offering clear educational support for :", selected: false, icon: 'insert_chart' },
+  { id: 14, name: 'Career', link: 'epic', method: 'GET', text: "I am Chatgeniusplus AI , acting as a AI-driven Career Guidance Genius, capable of providing comprehensive career counseling to students at all stages of their academic journey. My expertise includes resume building, interview preparation, professional goal-setting, and career path advice. Now will provide solution for :", selected: false, icon: 'insert_chart' },
+  { id: 15, name: 'Research', link: 'epic', method: 'GET', text: "I am Chatgeniusplus AI ,acting as a AI-powered Research Genius, equipped with the ability to discover pertinent literature, articles, and resources for student projects or assignments. Additionally, I can generate comprehensive literature reviews or annotated bibliographies based on user-defined criteria.Now will provide a solution for :", selected: false, icon: 'insert_chart' },
+  { id: 17, name: 'QA Edge Innovator', link: 'epic', method: 'GET', text: "I am a Chatgeniusplus AI Senior Software Test Engineer and based on your input, will provide logical out-of-the-box scenarios, logical edge cases, and logical best test cases to break the model for : ", selected: false, icon: 'insert_chart' },
+  ];
+
+  const filteredPrompts:any = promptsData?.filter((prompt) =>
+    prompt.name.toLowerCase().includes(promptInputValue.toLowerCase()),
   );
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -108,9 +130,10 @@ export const ChatInput: FC<Props> = ({
       return;
     }
 
-    onSend({ role: 'user', content }, plugin,null,null);
+    onSend({ role: 'user', content }, plugin, null, null);
     setContent('');
     setPlugin(null);
+    setSelectedPrompt("")
 
     if (window.innerWidth < 640 && textareaRef && textareaRef.current) {
       textareaRef.current.blur();
@@ -133,16 +156,19 @@ export const ChatInput: FC<Props> = ({
   };
 
   const handleInitModal = () => {
-    const selectedPrompt = filteredPrompts[activePromptIndex];
+    const selectedPrompt:any = filteredPrompts[activePromptIndex];
     if (selectedPrompt) {
       setContent((prevContent) => {
         const newContent = prevContent?.replace(
-          /\/\w*$/,
-          selectedPrompt.content,
+          /\/\w*$/,""
+          // selectedPrompt.content,
         );
         return newContent;
       });
       handlePromptSelect(selectedPrompt);
+      setSelectedPrompt(selectedPrompt);
+      if(selectedPrompt.id == '16')
+        { setJiraIntegration(true)}
     }
     setShowPromptList(false);
   };
@@ -190,7 +216,7 @@ export const ChatInput: FC<Props> = ({
     while ((match = regex.exec(content)) !== null) {
       foundVariables.push(match[1]);
     }
-    
+
     return foundVariables;
   };
 
@@ -235,64 +261,81 @@ export const ChatInput: FC<Props> = ({
     }
   };
 
-  const handleUploaded =()=>{
-    if(plugin && plugin.value == 'womenwithoutai'){
-      setShowQueryModal({...plugin,link:plugin.value})
+  const handleUploaded = () => {
+    if (plugin && plugin.value == 'womenwithoutai') {
+      setShowQueryModal({ ...plugin, link: plugin.value })
       return
     }
-   
-   if(plugin && plugin.value == 'docupload')
-    {
-    setOptions([
-      { id:1,text: 'Doc Summarization',link:'pdfsummarize' },
-      { id:2,text: 'Doc Question Generator',link:'pdfquestions'},
-      { id:3,text: 'Doc Question Answering',link:'pdfqa'},
-    ])}
-   else if (plugin && plugin.value == 'chart') {
-     setOptions([
-       { id: 1, text: 'Diagrams', link: 'diagrams' },
-       { id: 2, text: 'Flowchart', link: 'flowchart' },
-       { id: 3, text: 'Mindmap', link: 'mindmap' }
-     ])
-   }
-    else{
-setOptions([
-  { id:1,text: 'Video Summary ', link: 'videosummary'},
-  { id:2,text: 'Video Questions ', link: 'videoquestions'},
-  { id:3,text: 'Video QA', link: 'videoqa' },
-  { id:4,text: 'Video Suggestion ', link: 'videosuggestions'},
 
-])
+    if (plugin && plugin.value == 'docupload') {
+      setOptions([
+        { id: 1, text: 'Doc Summarization', link: 'pdfsummarize' },
+        { id: 2, text: 'Doc Question Generator', link: 'pdfquestions' },
+        { id: 3, text: 'Doc Question Answering', link: 'pdfqa' },
+      ])
+    }
+    else if (plugin && plugin.value == 'chart') {
+      setOptions([
+        { id: 1, text: 'Diagrams', link: 'diagrams' },
+        { id: 2, text: 'Flowchart', link: 'flowchart' },
+        { id: 3, text: 'Mindmap', link: 'mindmap' }
+      ])
+    }
+    else {
+      setOptions([
+        { id: 1, text: 'Video Summary ', link: 'videosummary' },
+        { id: 2, text: 'Video Questions ', link: 'videoquestions' },
+        { id: 3, text: 'Video QA', link: 'videoqa' },
+        { id: 4, text: 'Video Suggestion ', link: 'videosuggestions' },
+
+      ])
     }
     setShowOptionsModal(plugin)
-    
+
   }
 
-  const handleOption =(val:any)=>{
+  const handleOption = (val: any) => {
     setShowOptionsModal(null);
-    if(val.link == 'pdfqa' || val.link== 'videoqa' || showOptionsModal.value == 'chart'){
-      setShowQueryModal({...val,'btnOpt':showOptionsModal?.value})
-    } else 
-   { onSend({ role: 'user', content:val.text }, plugin,val.link,showOptionsModal?.value);
-   setPlugin(null);
-    
-  }
+    if (val.link == 'pdfqa' || val.link == 'videoqa' || showOptionsModal.value == 'chart') {
+      setShowQueryModal({ ...val, 'btnOpt': showOptionsModal?.value })
+    } else {
+      onSend({ role: 'user', content: val.text }, plugin, val.link, showOptionsModal?.value);
+      setPlugin(null);
+
+    }
+    setSelectedPrompt("")
   }
 
-  const handleQuery = (val:string)=>{        
+  const handleQuery = (val: string) => {
     setPlugin(null);
     setShowOptionsModal(null);
     setShowQueryModal(null);
-    onSend({ role: 'user', content:showQueryModal.text? showQueryModal.text + ": " +val:val }, plugin,showQueryModal.link,showQueryModal.link);
+    onSend({ role: 'user', content: showQueryModal.text ? showQueryModal.text + ": " + val : val }, plugin, showQueryModal.link, showQueryModal.link);
+    setSelectedPrompt("")
   }
 
-  const handleJiraInt=(val:any)=>{
+  const handleJiraInt = (val: any) => {
     val.start_date = reverseDateFormat(val.start_date)
     val.due_date = reverseDateFormat(val.due_date)
     setJiraIntegration(false)
     // onSend({ role: 'user', content:val.issue_summary }, null,selectedPrompt.link,val);
+    setSelectedPrompt("")
+    let body;
+    if(selectedPrompt.link=="integration"){
+      body = JSON.stringify(val)
+    }
+    let endpoint = "https://api.chatgeniusplus.ai/"+selectedPrompt.link
+    const controller = new AbortController();
+    const response = fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      signal: controller.signal,
+      body,
+    });
   }
-  const reverseDateFormat = (inputDate:any)=> {
+  const reverseDateFormat = (inputDate: any) => {
     const dateParts = inputDate.split('-');
     if (dateParts.length === 3) {
       const [year, month, day] = dateParts;
@@ -311,9 +354,8 @@ setOptions([
     if (textareaRef && textareaRef.current) {
       textareaRef.current.style.height = 'inherit';
       textareaRef.current.style.height = `${textareaRef.current?.scrollHeight}px`;
-      textareaRef.current.style.overflow = `${
-        textareaRef?.current?.scrollHeight > 400 ? 'auto' : 'hidden'
-      }`;
+      textareaRef.current.style.overflow = `${textareaRef?.current?.scrollHeight > 400 ? 'auto' : 'hidden'
+        }`;
     }
   }, [content]);
 
@@ -335,7 +377,7 @@ setOptions([
   }, []);
 
   useEffect(() => {
-    
+
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     //const recognition = new SpeechRecognition();
     setRecognition(new SpeechRecognition())
@@ -357,7 +399,7 @@ setOptions([
   }
 
   const startRecording = () => {
-    
+
     if (content && content.length) {
       let inputMic = content;
       inputMic += ' ';
@@ -375,7 +417,6 @@ setOptions([
       //recognizing = true;
     }
   }
-
 
   return (
     <div className="absolute bottom-0 left-0 w-full border-transparent bg-gradient-to-b from-transparent via-white to-white pt-6 dark:border-white/20 dark:via-[#343541] dark:to-[#343541] md:pt-2">
@@ -403,19 +444,19 @@ setOptions([
           <button
             className="absolute left-2 top-2 rounded-sm p-1 text-neutral-800 opacity-60 hover:bg-neutral-200 hover:text-neutral-900 dark:bg-opacity-50 dark:text-neutral-100 dark:hover:text-neutral-200"
             onClick={() => startRecording()}
-            onKeyDown={(e) => {}}
+            onKeyDown={(e) => { }}
           >
-         { recognizing? <IconMicrophone size={20} /> :<IconMicrophoneOff size={20} />}
+            {recognizing ? <IconMicrophone size={20} /> : <IconMicrophoneOff size={20} />}
           </button>
-          
-          {/* {selectedPrompt &&
-             <button
-             className="absolute left-0 bottom-14 py-2 px-2 rounded bg-white dark:bg-[#343541] rounded border border-neutral-200 "
-            
-           >
-            {selectedPrompt.name}
-           </button>
-          } */}
+
+          {selectedPrompt &&
+            <button
+              className="absolute left-0 bottom-14 py-2 px-2 rounded bg-white dark:bg-[#343541] rounded border border-neutral-200 "
+
+            >
+              {selectedPrompt.name}
+            </button>
+          }
 
           <textarea
             ref={textareaRef}
@@ -424,11 +465,10 @@ setOptions([
               resize: 'none',
               bottom: `${textareaRef?.current?.scrollHeight}px`,
               maxHeight: '400px',
-              overflow: `${
-                textareaRef.current && textareaRef.current.scrollHeight > 400
+              overflow: `${textareaRef.current && textareaRef.current.scrollHeight > 400
                   ? 'auto'
                   : 'hidden'
-              }`,
+                }`,
             }}
             placeholder={
               t('Type a message or type "@" to select a prompt...') || ''
@@ -440,7 +480,7 @@ setOptions([
             onChange={handleChange}
             onKeyDown={handleKeyDown}
           />
-          <button
+          {/* <button
             className="absolute right-8 top-2 rounded-sm p-1 text-neutral-800 opacity-60 hover:bg-neutral-200 hover:text-neutral-900 dark:bg-opacity-50 dark:text-neutral-100 dark:hover:text-neutral-200"
             // onClick={handleSend}
             onClick={() => setShowPluginSelect(!showPluginSelect)}
@@ -449,9 +489,9 @@ setOptions([
               <div></div>
             ) : (
               <IconPaperclip
-              size={18} />
+                size={18} />
             )}
-          </button>
+          </button> */}
           <button
             className="absolute right-2 top-2 rounded-sm p-1 text-neutral-800 opacity-60 hover:bg-neutral-200 hover:text-neutral-900 dark:bg-opacity-50 dark:text-neutral-100 dark:hover:text-neutral-200"
             onClick={handleSend}
@@ -462,18 +502,18 @@ setOptions([
               <IconSend size={18} />
             )}
           </button>
-          {/* {selectedPrompt &&
-             <button
-             className="absolute left-0 bottom-14 py-2 px-2 rounded bg-white dark:bg-[#343541] rounded border border-neutral-200 "
-            
-           >
-            {selectedPrompt.name}
-           </button>
-          } */}
+          {selectedPrompt &&
+            <button
+              className="absolute left-0 bottom-14 py-2 px-2 rounded bg-white dark:bg-[#343541] rounded border border-neutral-200 "
 
-          {/* {showPromptList && filteredPrompts.length > 0 && (
-            <div className="absolute bottom-12 w-full">
-               <PluginSelect
+            >
+              {selectedPrompt.name}
+            </button>
+          }
+
+          {showPluginSelect && (
+            <div className="absolute right-0 bottom-14 rounded bg-white dark:bg-[#343541]">
+              <PluginSelect
                 plugin={plugin}
                 onKeyDown={(e: any) => {
                   if (e.key === 'Escape') {
@@ -482,21 +522,20 @@ setOptions([
                     textareaRef.current?.focus();
                   }
                 }}
-                onPluginChange={(plugin:any) => {                  
+                onPluginChange={(plugin: any) => {
                   // if(plugin && ['diagrams','flowchart','mindmap'].includes(plugin.value)){
-                    if(plugin && plugin.value == 'chart'){
+                  if (plugin && plugin.value == 'chart') {
                     // setShowQueryModal(plugin)
                     setOptions([
-                      { id:1,text: 'Diagrams',link:'diagrams' },
-                      { id:2,text: 'Flowchart',link:'flowchart'},
-                      { id:3,text: 'Mindmap ',link:'mindmap'},
+                      { id: 1, text: 'Diagrams', link: 'diagrams' },
+                      { id: 2, text: 'Flowchart', link: 'flowchart' },
+                      { id: 3, text: 'Mindmap ', link: 'mindmap' },
                     ]);
                     setShowOptionsModal(plugin);
-                  } else
-                 {
-                  setPlugin(plugin);
-                 }
-                 setShowPluginSelect(false);
+                  } else {
+                    setPlugin(plugin);
+                  }
+                  setShowPluginSelect(false);
 
                   if (textareaRef && textareaRef.current) {
                     textareaRef.current.focus();
@@ -504,7 +543,7 @@ setOptions([
                 }}
               />
             </div>
-          )} */}
+          )}
           {showPromptList && filteredPrompts.length > 0 && (
             <div className="absolute bottom-12 w-full">
               <PromptList
@@ -525,13 +564,14 @@ setOptions([
             />
           )}
 
-{/* {plugin && 
+
+          {/* {plugin && 
            ( <PluginModal
             plugin={plugin}
             onSubmit={()=>handleUploaded()}
             onClose={() => setPlugin(null)}
             />)
-          }
+          } */}
            {showOptionsModal &&
           (  <OptionsModal
             plugin={options}
@@ -550,7 +590,7 @@ setOptions([
            plugin={jiraIntegration}
            onSubmit={handleJiraInt}
            onClose={() => setJiraIntegration(false)}
-          />)} */}
+          />)}
 
         </div>
       </div>

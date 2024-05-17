@@ -74,6 +74,8 @@ export const Chat: FC<Props> = memo(
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+    
+
     const scrollToBottom = useCallback(() => {
       if (autoScrollEnabled) {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
