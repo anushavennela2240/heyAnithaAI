@@ -130,7 +130,7 @@ export const ChatInput: FC<Props> = ({
       return;
     }
 
-    onSend({ role: 'user', content }, plugin, null, null);
+    onSend({ role: 'user', content :selectedPrompt.text ? selectedPrompt.text +  content : content }, plugin, null, null);
     setContent('');
     setPlugin(null);
     setSelectedPrompt("")
@@ -233,6 +233,7 @@ export const ChatInput: FC<Props> = ({
   }, []);
 
   const handlePromptSelect = (prompt: Prompt) => {
+    console.log(prompt,"prompt")
     const parsedVariables = parseVariables(prompt.content);
     setVariables(parsedVariables);
 
