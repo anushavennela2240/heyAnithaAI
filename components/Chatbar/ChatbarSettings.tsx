@@ -44,14 +44,14 @@ export const ChatbarSettings: FC<Props> = ({
     localStorage.clear();
     router.push('/login')
   }
-  const handleChange = (event: any) => {
-    onApiKeyChange(event.target.value)
-  }
+  // const handleChange = (event: any) => {
+  //   onApiKeyChange(event.target.value)
+  // }
   return (
     <div className="flex flex-col items-center space-y-1 border-t border-white/20 pt-1 text-sm">
-      {/* {conversationsCount > 0 ? (
+      {conversationsCount > 0 ? (
         <ClearConversations onClearConversations={onClearConversations} />
-      ) : null} */}
+      ) : null}
 
       {/* <Import onImport={onImportConversations} /> */}
 
@@ -60,11 +60,11 @@ export const ChatbarSettings: FC<Props> = ({
         icon={<IconFileExport size={18} />}
         onClick={() => onExportConversations()}
       /> */}
-      <input
+      {/* <input
         placeholder='Enter Openai Api Key'
         className="mt-1 w-full rounded-lg border border-neutral-500 px-4 py-2 text-neutral-900 shadow focus:outline-none dark:border-neutral-800 dark:border-opacity-50 dark:bg-[#40414F] dark:text-neutral-100"
         type="password"
-        onChange={(event) => handleChange(event)} />
+        onChange={(event) => handleChange(event)} /> */}
       <Key apiKey={apiKey} onApiKeyChange={onApiKeyChange} />
 
       {/* <SidebarButton
