@@ -58,7 +58,7 @@ const Home: React.FC<HomeProps> = ({
   const [loading, setLoading] = useState<boolean>(false);
   const [lightMode, setLightMode] = useState<'dark' | 'light'>('dark');
   const [messageIsStreaming, setMessageIsStreaming] = useState<boolean>(false);
-  const[promptList,setPrompList]= useState<any>(
+  const [promptList, setPrompList] = useState<any>(
     [
       {
         name: 'IT Genius', items: [{ name: 'Scrum Master' },
@@ -66,7 +66,7 @@ const Home: React.FC<HomeProps> = ({
         { name: 'Epic' },
         { name: 'User stories/Acceptance creteria' },
         { name: 'Tasks' },
-        { name: 'Jira Integration'},
+        { name: 'Jira Integration' },
         { name: 'Test Plan' },
         { name: 'Test scenario' },
         { name: 'Test data' },
@@ -97,6 +97,8 @@ const Home: React.FC<HomeProps> = ({
 
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [showPromptbar, setShowPromptbar] = useState<boolean>(true);
+  const [chatHeading, setChatHeading] = useState<any>()
+  const [pdfData, setpdfData] = useState<any>()
 
   // REFS ----------------------------------------------
 
@@ -142,7 +144,7 @@ const Home: React.FC<HomeProps> = ({
       };
 
       const formData = new FormData();
-      const endpoint = getEndpoint(plugin,botLink);
+      const endpoint = getEndpoint(plugin, botLink);
       let body;
 
       if (!plugin) {
@@ -342,7 +344,7 @@ const Home: React.FC<HomeProps> = ({
           code: data.error?.code,
           messageLines: [data.error?.message],
         });
-      } catch (e) {}
+      } catch (e) { }
       setModelError(error);
       return;
     }
@@ -682,7 +684,7 @@ const Home: React.FC<HomeProps> = ({
   useEffect(() => {
     const theme = localStorage.getItem('theme');
     if (theme) {
-      setLightMode(theme as 'dark' | 'light');
+      setLightMode(theme as 'light' | 'dark');
     }
 
     const apiKey = localStorage.getItem('apiKey');
@@ -757,10 +759,18 @@ const Home: React.FC<HomeProps> = ({
     }
   }, [serverSideApiKeyIsSet]);
 
+  const onChatHeading = (value: any) => {
+    setChatHeading(value)
+  }
+  const onPdfData = (value: any) => {
+    console.log(value, "values")
+    setpdfData(value)
+  }
+
   return (
     <>
       <Head>
-        <title>ChatGenius+</title>
+        <title>Heyanitha.ai</title>
         <meta name="description" content="ChatGPT but better." />
         <meta
           name="viewport"
@@ -804,10 +814,11 @@ const Home: React.FC<HomeProps> = ({
                   onImportConversations={handleImportConversations}
                   onPluginKeyChange={handlePluginKeyChange}
                   onClearPluginKey={handleClearPluginKey}
+                  onMygpt={onPdfData}
                 />
 
                 <button
-                  className="fixed top-5 left-[270px] z-50 h-7 w-7 hover:text-gray-400 dark:text-white dark:hover:text-gray-300 sm:top-0.5 sm:left-[270px] sm:h-8 sm:w-8 sm:text-neutral-700"
+                  className="fixed top-5 left-[470px] z-50 h-7 w-7 hover:text-gray-400 dark:text-white dark:hover:text-gray-300 sm:top-0.5 sm:left-[470px] sm:h-8 sm:w-8 sm:text-neutral-700"
                   onClick={handleToggleChatbar}
                 >
                   <IconArrowBarLeft />
@@ -842,10 +853,11 @@ const Home: React.FC<HomeProps> = ({
                 onEditMessage={handleEditMessage}
                 stopConversationRef={stopConversationRef}
                 onApiKeyChange={handleApiKeyChange}
+                mygptData={pdfData}
               />
             </div>
 
-            {showPromptbar ? (
+            {/* {showPromptbar ? (
               <div>
                 <Promptbar
                   prompts={promptList}
@@ -875,7 +887,7 @@ const Home: React.FC<HomeProps> = ({
               >
                 <IconArrowBarLeft />
               </button>
-            )}
+            )} */}
           </div>
         </main>
       )}

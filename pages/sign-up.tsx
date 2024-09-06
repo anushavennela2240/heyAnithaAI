@@ -93,7 +93,7 @@ function SignUp() {
     return (
         <div>
             <Head>
-                <title>ChatGenius+</title>
+                <title>Heyanitha.ai</title>
                 <meta name="description" content="ChatGPT but better." />
                 <meta
                     name="viewport"

@@ -24,6 +24,9 @@ import { ErrorMessageDiv } from './ErrorMessageDiv';
 import { ModelSelect } from './ModelSelect';
 import { SystemPrompt } from './SystemPrompt';
 import { Key } from '../Settings/Key';
+import { Box, Button, Card, CardContent, Paper, Stack, Typography } from '@mui/material';
+import Grid from '@mui/material/Grid2';
+import { styled } from '@mui/material/styles';
 
 interface Props {
   conversation: Conversation;
@@ -47,6 +50,7 @@ interface Props {
   ) => void;
   onEditMessage: (message: Message, messageIndex: number) => void;
   stopConversationRef: MutableRefObject<boolean>;
+  mygptData: any
 }
 
 export const Chat: FC<Props> = memo(
@@ -64,7 +68,8 @@ export const Chat: FC<Props> = memo(
     onUpdateConversation,
     onEditMessage,
     stopConversationRef,
-    onApiKeyChange
+    onApiKeyChange,
+    mygptData
   }) => {
     const { t } = useTranslation('chat');
     const [currentMessage, setCurrentMessage] = useState<Message>();
@@ -72,14 +77,15 @@ export const Chat: FC<Props> = memo(
     const [showSettings, setShowSettings] = useState<boolean>(false);
     const [showScrollDownButton, setShowScrollDownButton] =
       useState<boolean>(false);
+    const [selectedTile, setSelectedTile] = useState<string | null>(null); // State for selected tile
+    const [newKey, setNewKey] = useState<any>()
+    const [isModalOpen, setIsModalOpen] = useState(true);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
-    const [newKey,setNewKey] = useState<any>()
-    const [isModalOpen, setIsModalOpen] = useState(true);
-
-    
+    const [internetData, setInternetData] = useState<any[]>([])
+    const [isLoading, setisloading] = useState<boolean>(false)
 
     const scrollToBottom = useCallback(() => {
       if (autoScrollEnabled) {
@@ -158,212 +164,393 @@ export const Chat: FC<Props> = memo(
         }
       };
     }, [messagesEndRef]);
+
     const handleChange = (event: any) => {
       setNewKey(event.target.value)
     }
-    const handleSubmit =(event:any) =>{
+
+    const handleSubmit = (event: any) => {
       event?.preventDefault()
       onApiKeyChange(newKey)
-      setTimeout(()=>{
+      setTimeout(() => {
         setNewKey('')
-      },2000)
+      }, 2000)
     }
+
     const handleClose = () => {
       setIsModalOpen(false);
     };
 
+    useEffect(() => {
+      onApiKeyChange('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')
+    }, [])
+
+    const handleCrawlByDatabase = async (message: any) => {
+      setisloading(true)
+      try {
+        const response = await fetch('https://1vqwm79std.execute-api.us-east-1.amazonaws.com/default/searchgeniusdb', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ application_description: message?.content }),
+        });
+        const data = await response.json();
+        console.log(data);
+        // Handle the data or update the state
+        setisloading(false)
+      } catch (error) {
+        console.error('Error:', error);
+        setisloading(false)
+      }
+    };
+
+    const handleCrawlWithPDF = async (message: any) => {
+      setisloading(true)
+      const formData: any = new FormData();
+      if (mygptData) {
+        mygptData?.files.forEach((file: any, index: any) => {
+          console.log(file, "files")
+          formData.append(`file${index + 1}`, file);
+        });
+
+        // Append other fields if necessary
+        formData.append('pdf_urls', mygptData.urls || '[]');
+        formData.append('is_google_authenticated', mygptData.is_google_authenticated || 'false');
+        formData.append('query', JSON.stringify({ query: message }));
+      }
+      // let json:any ={}
+      // if(mygptData){
+      //   mygptData?.files.forEach((file: any, index: any) => {
+      //     console.log(file,"files")
+      //     json[`file${index+1}`] = file;
+      //   });
+
+      //  // Append other fields if necessary
+      //  json['pdf_urls'] = mygptData.urls || '[]';
+      //  json['is_google_authenticated']= mygptData.is_google_authenticated || 'false';
+      //  json['query']= JSON.stringify(message);
+      // }
+      // console.log(formData,"pdf form data",json)
+      try {
+        const response = await fetch('http://ec2-34-222-221-137.us-west-2.compute.amazonaws.com:8100/pdfqa', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: mygptData ? formData : JSON.stringify({ application_description: message }),
+        })
+        const data = await response.json()
+        console.log(data)
+        // Handle the data or update the state
+        setisloading(false)
+      } catch (error) {
+        setisloading(false)
+        console.error('Error:', error)
+      }
+    }
+
+
+
+    const handleCrawlByGoogle = async (message: any) => {
+      setisloading(true)
+      try {
+        const response = await fetch('http://ec2-34-222-221-137.us-west-2.compute.amazonaws.com:8100/start-oauth', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ query: message?.content }),
+        });
+
+        const result = await response.json();
+        setisloading(false)
+      } catch (error) {
+        setisloading(false)
+        console.error('Error:', error);
+      }
+    };
+
+    // const handleCrawlByInternet = async (message: any) => {
+    //   setisloading(true)
+    //   try {
+    //     const response = await fetch('http://ec2-54-196-253-159.compute-1.amazonaws.com:8101/internetsearch', {
+    //       method: 'POST',
+    //       headers: {
+    //         'Content-Type': 'application/json',
+    //       },
+    //       body: JSON.stringify({ query: message?.content }),
+    //     });
+    //     // const data = await response.json();
+    //     const text = await response.text();
+
+    //     // Parse HTML
+    //     const parser = new DOMParser();
+    //     const doc = parser.parseFromString(text, 'text/html');
+
+    //     // Extract data
+    //     const title = doc.querySelector('h1')?.textContent || '';
+    //     const paragraphs = Array.from(doc.querySelectorAll('p'));
+    //     const generatedAnswer = paragraphs.map(p => p.textContent || '').join('\n');
+    //     const images = Array.from(doc.querySelectorAll('img')).map(img => img.src);
+
+    //     // Construct JSON
+    //     const json = {
+    //       title,
+    //       generatedAnswer,
+    //       images
+    //     };
+
+    //     console.log(json);
+    //     setInternetData(json)
+    //     // Handle the data or update the state
+    //     setisloading(false)
+    //   } catch (error) {
+    //     setisloading(false)
+    //     console.error('Error:', error);
+    //   }
+    // };
+    const extractDataFromHTML = (htmlString: string) => {
+      // Parse the HTML string
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(htmlString, 'text/html');
+
+      // Extract title
+      const title = doc.querySelector('h1')?.textContent?.trim() || '';
+
+      // Extract full text content
+      const fullText = doc.body.textContent || '';
+
+      // Define regular expressions to match various section titles
+      const followUpQuestionsPattern = /Follow[- ]?up[ -]?questions(?: for further understanding or exploration)?[:]?/i;
+      const generatedAnswerPattern = /Generated Answer[:]?/i;
+      const relatedImagesPattern = /Related Images[:]?/i; // Pattern for "Related Images"
+
+      // Extract generated answer part and follow-up questions part
+      const [generatedAnswerPart, followUpQuestionsPart] = fullText.split(followUpQuestionsPattern);
+
+      // Extract and process generated answer
+      const generatedAnswer = generatedAnswerPart
+        ?.split(generatedAnswerPattern)[1] // Split further based on "Generated Answer:" if present
+        ?.trim() || '';
+
+      // Process follow-up questions
+      const followUpQuestions = (followUpQuestionsPart || '')
+        .split('\n')
+        .filter(line => line.trim().match(/^\d+\.\s/)) // Match lines starting with numbers (e.g., "1. ")
+        .map(question => question.trim().replace(/^\d+\.\s/, '')) // Remove leading number and period
+        .filter(question => question.length > 0) || [];
+
+      // Extract video links
+      const videoLinks = Array.from(doc.querySelectorAll('a')).map(a => ({
+        text: a.textContent?.trim() || '',
+        url: a.href || ''
+      }));
+
+      // Extract and trim images section
+      const imagesPart = (fullText.split(relatedImagesPattern)[1] || '').trim();
+
+      // Extract all images from the document
+      const images = Array.from(doc.querySelectorAll('img')).map(img => img.src || '').filter(src => src.length > 0);
+
+      // Return formatted data
+      return {
+        title,
+        generatedAnswer,
+        followUpQuestions,
+        videoLinks,
+        images
+      };
+    };
+
+
+    // Example usage in your handleCrawlByInternet function
+    const handleCrawlByInternet = async (message: { content?: string }) => {
+      setisloading(true);
+      try {
+        const response = await fetch('http://ec2-54-196-253-159.compute-1.amazonaws.com:8101/internetsearch', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ query: message?.content || '' }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const htmlString = await response.text();
+        const data = extractDataFromHTML(htmlString);
+        console.log(data, "data")
+        setInternetData(prev => [...prev, data]);
+      } catch (error) {
+        console.error('Error:', error);
+      } finally {
+        setisloading(false);
+      }
+    };
+
+    const handleTileClick = (tileType: string) => {
+      setSelectedTile(tileType); // Set the selected tile
+    };
+
+    const handleSend = async (message: Message, plugin: Plugin | null) => {
+      console.log(message, "message")
+      if (!selectedTile) {
+        alert(t<string>('Please select a tile before sending the message.'));
+        return;
+      }
+      setCurrentMessage(message);
+      if (selectedTile) {
+        switch (selectedTile) {
+          case 'pdf':
+            await handleCrawlWithPDF(message);
+            break;
+          case 'database':
+            await handleCrawlByDatabase(message);
+            break;
+          case 'google_drive':
+            await handleCrawlByGoogle(message);
+            break;
+          case 'internet':
+            await handleCrawlByInternet(message);
+            break;
+          default:
+            break;
+        }
+      }
+      // onSend(message, 0, plugin);
+    };
+    console.log(internetData, "internet")
     return (
-      <div className="relative flex-1 overflow-hidden bg-white dark:bg-[#343541]">
-        {isModalOpen && !(apiKey || serverSideApiKeyIsSet) ? (
-
-          <div
-            id="authentication-modal"
-            tabIndex={-1}
-            aria-hidden="true"
-            className="fixed top-0 right-0 left-0 z-50 flex justify-center items-center w-full h-[calc(100%-1rem)] max-h-full bg-gray-800 bg-opacity-50"
-          >
-            <div className="relative p-4 w-full max-w-md max-h-full bg-white rounded-lg shadow dark:bg-gray-700">
-              <div style={{display:'flex',justifyContent:'end'}}>
-                <button
-                  type="button"
-                  className="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white d-flex justify-end"
-                  onClick={handleClose}
-                >
-                  <svg
-                    className="w-3 h-3"
-                    aria-hidden="true"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 14 14"
-                  >
-                    <path
-                      stroke="currentColor"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"
-                    />
-                  </svg>
-                  <span className="sr-only">Close modal</span>
-                </button>
-              </div>
-              <div className="p-4 md:p-5">
-                <form className="space-y-4" onSubmit={handleSubmit}>
-                  <div>
-                    <input
-                      placeholder="Enter OpenAI API Key"
-                      className="mt-1 w-full rounded-lg border border-neutral-500 px-4 py-2 text-neutral-900 shadow focus:outline-none dark:border-neutral-800 dark:border-opacity-50 dark:bg-[#40414F] dark:text-neutral-100"
-                      type="password"
-                      value={newKey}
-                      onChange={handleChange}
-                    />
-                    <button
-                      type="submit"
-                      className="mt-3 w-full bg-blue-500 text-white rounded-lg py-2 hover:bg-blue-600"
-                    >
-                      Submit
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
+      <div className="relative flex-1 overflow-hidden" style={{ backgroundColor: 'var(--background-color)' }}>
+        <Key apiKey={apiKey} onApiKeyChange={onApiKeyChange} />
+        <div className="mx-auto flex w-[350px] flex-col space-y-10 pt-6 sm:w-[600px] mb-3">
+          <div className="text-center text-2xl font-semibold text-gray-800 dark:text-gray-100">
+            {mygptData?.name ? mygptData?.name : 'Heyanitha.ai'}
           </div>
-
-          // <div className="mx-auto flex h-full w-[300px] flex-col justify-center space-y-6 sm:w-[600px]">
-          //   <div className="text-center text-4xl font-bold text-black dark:text-white">
-          //     Welcome to Chatbot UI
-          //   </div>
-          //   <div className="text-center text-lg text-black dark:text-white">
-          //     <div className="mb-8">{`Chatbot UI is an open source clone of OpenAI's ChatGPT UI.`}</div>
-          //     <div className="mb-2 font-bold">
-          //       Important: Chatbot UI is 100% unaffiliated with OpenAI.
-          //     </div>
-          //   </div>
-          //   <div className="text-center text-gray-500 dark:text-gray-400">
-          //     <div className="mb-2">
-          //       Chatbot UI allows you to plug in your API key to use this UI
-          //       with their API.
-          //     </div>
-          //     <div className="mb-2">
-          //       It is <span className="italic">only</span> used to communicate
-          //       with their API.
-          //     </div>
-          //     <div className="mb-2">
-          //       {t(
-          //         'Please set your OpenAI API key in the bottom left of the sidebar.',
-          //       )}
-          //     </div>
-          //     <div>
-          //       {t(
-          //         "If you don't have an OpenAI API key, you can get one here: ",
-          //       )}
-          //       <a
-          //         href="https://platform.openai.com/account/api-keys"
-          //         target="_blank"
-          //         rel="noreferrer"
-          //         className="text-blue-500 hover:underline"
-          //       >
-          //         openai.com
-          //       </a>
-          //     </div>
-          //   </div>
-          // </div>
-        ): !isModalOpen && !(apiKey || serverSideApiKeyIsSet)  ? (
-          <div></div>
-        ) : modelError && !newKey ? (
-          <ErrorMessageDiv error={modelError} />
-        ) : (
-          <>
-            <div
-              className="max-h-full overflow-x-hidden"
-              ref={chatContainerRef}
-              onScroll={handleScroll}
-            >
-              {conversation.messages.length === 0 ? (
-                <>
-                  <div className="mx-auto flex w-[350px] flex-col space-y-10 pt-12 sm:w-[600px]">
-                    <div className="text-center text-3xl font-semibold text-gray-800 dark:text-gray-100">
-                      {models.length === 0 ? (
-                        <div>
-                          <Spinner size="16px" className="mx-auto" />
-                        </div>
-                      ) : (
-                        'ChatGeniusplus'
-                      )}
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="flex justify-center border border-b-neutral-300 bg-neutral-100 py-2 text-sm text-neutral-500 dark:border-none dark:bg-[#444654] dark:text-neutral-200">
-                  ChatGenius+
-                  </div>
-                  {showSettings && (
-                    <div className="flex flex-col space-y-10 md:mx-auto md:max-w-xl md:gap-6 md:py-3 md:pt-6 lg:max-w-2xl lg:px-0 xl:max-w-3xl">
-                      <div className="flex h-full flex-col space-y-4 border-b border-neutral-200 p-4 dark:border-neutral-600 md:rounded-lg md:border">
-                        <ModelSelect
-                          model={conversation.model}
-                          models={models}
-                          defaultModelId={defaultModelId}
-                          onModelChange={(model) =>
-                            onUpdateConversation(conversation, {
-                              key: 'model',
-                              value: model,
-                            })
-                          }
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {conversation.messages.map((message, index) => (
-                    <ChatMessage
-                      key={index}
-                      message={message}
-                      messageIndex={index}
-                      onEditMessage={onEditMessage}
-                    />
-                  ))}
-
-                  {loading && <ChatLoader />}
-
-                  <div
-                    className="h-[162px] bg-white dark:bg-[#343541]"
-                    ref={messagesEndRef}
-                  />
-                </>
-              )}
-            </div>
-
-            <ChatInput
-              stopConversationRef={stopConversationRef}
-              textareaRef={textareaRef}
-              messageIsStreaming={messageIsStreaming}
-              conversationIsEmpty={conversation.messages.length === 0}
-              model={conversation.model}
-              prompts={prompts}
-              onSend={(message, plugin) => {
-                setCurrentMessage(message);
-                onSend(message, 0, plugin);
+        </div>
+        <div className="text-center text-l text-gray-800 dark:text-gray-100" style={{ marginBottom: '10px' }}>
+          {mygptData?.description ? mygptData?.description : ''}
+        </div>
+        <div style={{ padding: 5, position: 'sticky', top: 0, zIndex: 10, backgroundColor: '#262626', marginLeft: '20px', marginRight: '20px' }}>
+          <Stack direction="row" spacing={2} justifyContent="center">
+            {/* Crawl by PDF Button */}
+            <Button
+              variant="outlined"
+              sx={{
+                width: '100%',
+                borderColor: selectedTile === 'pdf' ? '' : 'var(--button-border)',
+                color: selectedTile === 'pdf' ? 'var(--button-active-color)' : '#858482',
+                background: selectedTile === 'pdf' ? '#363532' : 'var(--button-background)',
+                border: 0,
+                textTransform: 'capitalize',
+                fontWeight: 'normal',
+                padding: '4px 12px',
+                fontSize: '0.875rem',
+                borderRadius: '12px',
+                boxShadow: selectedTile === 'pdf' ? 'var(--box-shadow)' : '0 2px 4px rgba(0, 0, 0, 0.1)',
+                '&:hover': {
+                  borderColor: 'var(--button-border)',
+                },
               }}
-              onRegenerate={() => {
-                if (currentMessage) {
-                  onSend(currentMessage, 2, null);
-                }
-              }}
-            />
-          </>
-        )}
-        {showScrollDownButton && (
-          <div className="absolute bottom-0 right-0 mb-4 mr-4 pb-20">
-            <button
-              className="flex h-7 w-7 items-center justify-center rounded-full bg-neutral-300 text-gray-800 shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-neutral-200"
-              onClick={handleScrollDown}
+              onClick={() => handleTileClick('pdf')}
             >
-              <IconArrowDown size={18} />
-            </button>
-          </div>
-        )}
+              Crawl by PDF
+            </Button>
+
+            {/* Crawl by Database Button */}
+            <Button
+              variant="outlined"
+              sx={{
+                width: '100%',
+                borderColor: selectedTile === 'database' ? '' : 'var(--button-border)',
+                color: selectedTile === 'database' ? 'var(--button-active-color)' : '#858482',
+                background: selectedTile === 'database' ? '#363532' : 'var(--button-background)',
+                border: 0,
+                textTransform: 'capitalize',
+                fontWeight: 'normal',
+                padding: '4px 12px',
+                fontSize: '0.875rem',
+                borderRadius: '12px',
+                boxShadow: selectedTile === 'database' ? 'var(--box-shadow)' : '0 2px 4px rgba(0, 0, 0, 0.1)',
+                '&:hover': {
+                  borderColor: 'var(--button-border)',
+                },
+              }}
+              onClick={() => handleTileClick('database')}
+            >
+              Crawl by Database
+            </Button>
+
+            {/* Crawl by Google Drive Button */}
+            <Button
+              variant="outlined"
+              sx={{
+                width: '100%',
+                borderColor: selectedTile === 'google_drive' ? '' : 'var(--button-border)',
+                color: selectedTile === 'google_drive' ? 'var(--button-active-color)' : '#858482',
+                background: selectedTile === 'google_drive' ? '#363532' : 'var(--button-background)',
+                border: 0,
+                textTransform: 'capitalize',
+                fontWeight: 'normal',
+                padding: '4px 12px',
+                fontSize: '0.875rem',
+                borderRadius: '12px',
+                boxShadow: selectedTile === 'google_drive' ? 'var(--box-shadow)' : '0 2px 4px rgba(0, 0, 0, 0.1)',
+                '&:hover': {
+                  borderColor: 'var(--button-border)',
+                },
+              }}
+              onClick={() => handleTileClick('google_drive')}
+            >
+              Crawl by Google Drive
+            </Button>
+
+            {/* Crawl by Internet Button */}
+            <Button
+              variant="outlined"
+              sx={{
+                width: '100%',
+                borderColor: selectedTile === 'internet' ? '' : 'var(--button-border)',
+                color: selectedTile === 'internet' ? 'var(--button-active-color)' : '#858482',
+                background: selectedTile === 'internet' ? '#363532' : 'var(--button-background)',
+                border: 0,
+                textTransform: 'capitalize',
+                fontWeight: 'normal',
+                padding: '4px 12px',
+                fontSize: '0.875rem',
+                borderRadius: '12px',
+                boxShadow: selectedTile === 'internet' ? 'var(--box-shadow)' : '0 2px 4px rgba(0, 0, 0, 0.1)',
+                '&:hover': {
+                  borderColor: 'var(--button-border)',
+                },
+              }}
+              onClick={() => handleTileClick('internet')}
+            >
+              Crawl by Internet
+            </Button>
+          </Stack>
+        </div>
+
+
+        <ChatInput
+          stopConversationRef={stopConversationRef}
+          textareaRef={textareaRef}
+          messageIsStreaming={messageIsStreaming}
+          conversationIsEmpty={conversation.messages.length === 0}
+          model={conversation.model}
+          prompts={prompts}
+          onSend={(message, plugin) => {
+            handleSend(message, plugin); // Use handleSend instead of onSend
+          }}
+          onRegenerate={() => {
+            if (currentMessage) {
+              handleSend(currentMessage, null); // Regenerate using handleSend
+            }
+          }}
+        />
       </div>
     );
   },
